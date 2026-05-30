@@ -2,6 +2,8 @@
 require_once __DIR__ . '/utils.php';
 require_once __DIR__ . '/SiteRequest.php';
 
+$html = isset($_GET['html']);
+
 // Load the configuration
 $config = load_config();
 
@@ -213,6 +215,7 @@ foreach ($types as $slug => $type) {
             <?php foreach ($type['contents'] as $content) : ?>
                 <li>
                     <?php $href = rawurlencode($content['rest_base']) . '/' . $content['id']; ?>
+                    <?php if ($html) { $href .= '?html'; } ?>
                     <?php if ($content['date_label'] !== ''): ?>
                         <a href="<?= $href ?>"><?= htmlspecialchars($content['title']) ?> <small>(<?= htmlspecialchars($content['date_label']) ?>)</small></a>
                     <?php else: ?>

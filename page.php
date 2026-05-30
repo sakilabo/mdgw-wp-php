@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/utils.php';
+require_once __DIR__ . '/slim_html_fragment.php';
 require_once __DIR__ . '/SiteRequest.php';
 require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/converter/LanguagePreConverter.php';
@@ -16,7 +17,16 @@ $config = load_config();
 $rest_base = $_GET['rest_base'] ?? null;
 $page_id = intval($_GET['id'] ?? 0);
 $url = $_GET['url'] ?? null;
-$raw_mode = isset($_GET['raw']);
+$mode = 'markdown';
+if (isset($_GET['raw'])) {
+    $mode = 'raw';
+} elseif (isset($_GET['html'])) {
+    $mode = 'html';
+}
+// If user agent is "Google" then set mode to "html" to make Gemini reading the content correctly
+if (trim($_SERVER['HTTP_USER_AGENT']) === 'Google') {
+    $mode = 'html';
+}
 
 // When a url is given, get rest_base and id from that page's link tag
 if (!empty($url)) {
@@ -73,7 +83,7 @@ $content = str_replace(["\r\n", "\r"], "\n", $content);
 $title = trim(preg_replace('/\s+/u', ' ', $post['title']['rendered'] ?? ''));
 
 // Convert the post HTML to Markdown
-if (!$raw_mode) {
+if ($mode == 'markdown') {
     // Replace Font Awesome icons (<i class="fa ..."></i>) with ■
     $content = preg_replace(
         '/<i\b[^>]*\bclass\s*=\s*["\'][^"\']*\bfa[bsrld]?\b[^"\']*["\'][^>]*>\s*<\/i>/i',
@@ -111,30 +121,45 @@ if (!$raw_mode) {
 // Only whitespace-only lines are targeted, so the next line's leading indentation is not consumed.
 $content = preg_replace('/(?:[ \t]*\n){2,}/', "\n\n", $content);
 
-// Output the headers
-header('Content-Type: text/plain; charset=UTF-8');
-// Output the YAML Front Matter for Markdown output
-if (!$raw_mode) {
-    $date = format_datetime($post['date_gmt'] ?? '', $config['timezone'] ?? null);
-    echo "---\n";
-    echo 'post_id: ' . format_yaml_value($post['id']) . "\n";
-    echo 'date: ' . format_yaml_value($date) . "\n";
-    echo 'title: ' . format_yaml_value($title) . "\n";
-    foreach (extract_terms_by_taxonomy($post) as $tax => $names) {
-        echo $tax . ': ' . format_yaml_value($names) . "\n";
-    }
-    if ($post['author_name'] != '') {
-        echo 'author: ' . format_yaml_value($post['author_name']) . "\n";
-        if ($post['author_description'] != '') {
-            echo 'author_description: ' . format_yaml_value($post['author_description']) . "\n";
+switch ($mode) {
+    case 'raw':
+        header('Content-Type: text/plain; charset=UTF-8');
+        echo $content;
+        break;
+    case 'html':
+        header('Content-Type: text/html; charset=UTF-8');
+        echo '<html><head><meta charset="UTF-8"><title>' . htmlspecialchars($title) . '</title></head><body>';
+        echo '<h1>' . htmlspecialchars($title) . '</h1>';
+        // Slim the HTML: keep structural (colspan/rowspan) and content-bearing (href/src/alt) attributes,
+        // drop <script>/<style> wholesale. (No tags to unwrap for now.)
+        echo slim_html_fragment($content, ['colspan', 'rowspan', 'href', 'src', 'alt'], ['script', 'style']);
+        echo '</body></html>';
+        break;
+    case 'markdown':
+    default:
+        header('Content-Type: text/plain; charset=UTF-8');
+        // Output the YAML Front Matter for Markdown output
+        $date = format_datetime($post['date_gmt'] ?? '', $config['timezone'] ?? null);
+        echo "---\n";
+        echo 'post_id: ' . format_yaml_value($post['id']) . "\n";
+        echo 'date: ' . format_yaml_value($date) . "\n";
+        echo 'title: ' . format_yaml_value($title) . "\n";
+        foreach (extract_terms_by_taxonomy($post) as $tax => $names) {
+            echo $tax . ': ' . format_yaml_value($names) . "\n";
         }
-    }
-    echo 'permalink: ' . format_yaml_value($post['link'] ?? '') . "\n";
-    // Output the REST API endpoint only when enabled in config (default off)
-    if ($config['show_api_endpoint'] ?? false) {
-        echo 'api_endpoint: ' . format_yaml_value($api_url) . "\n";
-    }
-    echo "---\n\n";
+        if ($post['author_name'] != '') {
+            echo 'author: ' . format_yaml_value($post['author_name']) . "\n";
+            if ($post['author_description'] != '') {
+                echo 'author_description: ' . format_yaml_value($post['author_description']) . "\n";
+            }
+        }
+        echo 'permalink: ' . format_yaml_value($post['link'] ?? '') . "\n";
+        // Output the REST API endpoint only when enabled in config (default off)
+        if ($config['show_api_endpoint'] ?? false) {
+            echo 'api_endpoint: ' . format_yaml_value($api_url) . "\n";
+        }
+        echo "---\n\n";
+        // Output the content
+        echo $content;
+        break;
 }
-// Output the content
-echo $content;
