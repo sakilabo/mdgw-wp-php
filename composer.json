@@ -1,0 +1,34 @@
+{
+    "name": "sakilabo/mdgw-wp",
+    "description": "A standalone PHP web application that shares an entire WordPress site with AI as Markdown — no plugin.",
+    "type": "project",
+    "license": "UPL-1.0",
+    "keywords": ["wordpress", "markdown", "ai", "llm", "rest-api", "content-gateway"],
+    "homepage": "https://github.com/sakilabo/mdgw-wp-php",
+    "authors": [
+        {
+            "name": "Sakilabo Corporation Ltd.",
+            "homepage": "https://sakilabo.jp"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/sakilabo/mdgw-wp-php/issues",
+        "source": "https://github.com/sakilabo/mdgw-wp-php"
+    },
+    "require": {
+        "php": ">=8.2",
+        "ext-curl": "*",
+        "ext-dom": "*",
+        "ext-intl": "*",
+        "ext-json": "*",
+        "ext-libxml": "*",
+        "ext-mbstring": "*",
+        "league/html-to-markdown": "^5.1"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10"
+    },
+    "scripts": {
+        "test": "phpunit"
+    }
+}

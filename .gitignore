@@ -1,0 +1,5 @@
+/.vscode/
+/.claude/
+/vendor/
+/.phpunit.cache/
+/config.php

@@ -1,0 +1,22 @@
+RewriteEngine On
+
+# Allowlist (default-deny): only the three real routes are served. Everything else
+# -- source files, *.md, LICENSE, dotfiles, vendor/, tests/, etc. -- is forbidden,
+# so there is no blocklist to keep in sync as files are added.
+#
+# The [END] flag (Apache 2.3.9+) stops rewrite processing, so the substituted entry
+# script is not re-evaluated against the catch-all deny at the bottom. Root is
+# rewritten straight to index.php (rather than relying on DirectoryIndex, whose
+# internal sub-request for index.php would otherwise hit the deny and 403).
+
+# "/" -> index.php
+RewriteRule ^$ index.php [END]
+
+# "/page" or "/page/" -> page.php   (QSA keeps ?url=... and ?raw)
+RewriteRule ^page/?$ page.php [QSA,END]
+
+# "/<rest_base>/<id>" -> page.php
+RewriteRule ^([^/]+)/(\d+)/?$ page.php?rest_base=$1&id=$2 [QSA,END]
+
+# Anything else is denied.
+RewriteRule ^ - [F]
