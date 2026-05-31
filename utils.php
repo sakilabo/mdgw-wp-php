@@ -70,6 +70,32 @@ function load_config(): array
     return $config;
 }
 
+// Return true if the user agent string likely belongs to an AI agent.
+function is_agent(string $user_agent): bool
+{
+    if ($user_agent === '-') {
+        return true;
+    }
+    $ai_agents_words = [
+        'anthropic',
+        'claude',
+        'google',
+        'gemini',
+        'openai',
+        'chatgpt',
+        'perplexity',
+        'bing',
+        'facebook',
+        'curl',
+    ];
+    foreach ($ai_agents_words as $word) {
+        if (stripos($user_agent, $word) !== false) {
+            return true;
+        }
+    }
+    return false;
+}
+
 // Decode punycode and URL encoding for human readability.
 function prettify_url(string $url): string
 {
@@ -107,6 +133,20 @@ function normalize_url(string $url, bool $without_params = false): ?string
     } else {
         return $scheme . '://' . $host . $port . $path . $query . $fragment;
     }
+}
+
+// Build an absolute URL on this gateway from a relative URL, using the current request.
+// Handles a TLS-terminating proxy in front (e.g. nginx -> Apache).
+function get_absolute_url(string $relative_url): string
+{
+    $scheme = (
+        ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https'
+        || (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || ($_SERVER['SERVER_PORT'] ?? '') === '443'
+    ) ? 'https' : 'http';
+    $base_url = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? '')
+        . rtrim(strtok($_SERVER['REQUEST_URI'] ?? '/', '?'), '/') . '/';
+    return $base_url . ltrim($relative_url, '/');
 }
 
 // Returns true if the value is a (delimited) regex pattern, false if it is a plain string.

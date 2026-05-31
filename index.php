@@ -4,12 +4,14 @@ require_once __DIR__ . '/SiteRequest.php';
 
 $html = isset($_GET['html']);
 
+$is_agent = is_agent($_SERVER['HTTP_USER_AGENT'] ?? '');
+
 // Load the configuration
 $config = load_config();
 
 // Get the site name (fall back to the host name if it cannot be retrieved)
 $site_name = '';
-$res = SiteRequest::get($config['wp_site'] . '/wp-json/?_fields=name');
+$res = SiteRequest::get($config['wp_site'] . '/wp-json/?_fields=name,description');
 if ($res->success) {
     $site = json_decode($res->body, true);
     $site_name = $site['name'] ?? '';
@@ -128,111 +130,148 @@ foreach ($types as $slug => $type) {
     // Add content information to the post type
     $types[$slug]['contents'] = $contents;
 }
+
+// The response body differs by User-Agent, so any cache must key on it.
+header('Vary: User-Agent');
 ?>
 <!DOCTYPE html>
 <html>
 
 <head>
     <meta charset="UTF-8">
+    <meta name="robots" content="noindex, nofollow">
     <title>MD Gateway - <?= htmlspecialchars($site_name) ?></title>
-    <style>
-        html {
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            margin: 20px 30px;
-            padding: 0;
-            font-family: <?= build_css_font_family($config['font_family'] ?? null) ?>;
-            font-size: 14px;
-            line-height: 1.5;
-        }
-
-        #site-url {
-            font-size: 18px;
-        }
-
-        h1 {
-            font-size: 30px;
-            margin: 20px 0 12px;
-        }
-
-        h2 {
-            font-size: 24px;
-            margin: 18px 0 10px;
-        }
-
-        ul {
-            margin: 0.3em 0;
-            padding-left: 2em;
-        }
-
-        li small {
-            font-size: 11px;
-        }
-
-        ul.details {
-            display: none;
-            margin: 0px 0 8px;
-            padding-left: 1.5em;
-            font-size: 12px;
-        }
-
-        button.details {
-            padding: 1px 4px;
-            font-size: 11px;
-            cursor: pointer;
-            color: #404040;
-            background-color: #F4F4F4;
-            border: 1px solid #C0C0C0;
-            border-radius: 4px;
-        }
-    </style>
-    <script>
-        function toggleDetails(button) {
-            const details = button.nextElementSibling;
-            if (details.style.display === 'none' || details.style.display === '') {
-                details.style.display = 'block';
-            } else {
-                details.style.display = 'none';
+    <?php if (!$is_agent): ?>
+        <style>
+            html {
+                margin: 0;
+                padding: 0;
             }
-        }
-    </script>
+
+            body {
+                margin: 20px 30px;
+                padding: 0;
+                font-family: <?= build_css_font_family($config['font_family'] ?? null) ?>;
+                font-size: 14px;
+                line-height: 1.5;
+            }
+
+            #original-site-url {
+                font-size: 16px;
+                font-weight: bold;
+                margin: 12px 0;
+            }
+
+            h1 {
+                font-size: 30px;
+                margin: 20px 0 12px;
+            }
+
+            h2 {
+                font-size: 24px;
+                margin: 18px 0 10px;
+            }
+
+            p {
+                margin: 0.3em 0;
+            }
+
+            ul {
+                margin: 0.3em 0;
+                padding-left: 2em;
+            }
+
+            li small {
+                font-size: 11px;
+            }
+
+            ul.details {
+                display: none;
+                margin: 0px 0 8px;
+                padding-left: 1.5em;
+                font-size: 12px;
+            }
+
+            button.details {
+                padding: 1px 4px;
+                font-size: 11px;
+                cursor: pointer;
+                color: #404040;
+                background-color: #F4F4F4;
+                border: 1px solid #C0C0C0;
+                border-radius: 4px;
+            }
+        </style>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const detailsButtons = document.querySelectorAll('button.details');
+                detailsButtons.forEach(function(button) {
+                    button.addEventListener('click', function() {
+                        const details = button.nextElementSibling;
+                        if (details.style.display === 'none' || details.style.display === '') {
+                            details.style.display = 'block';
+                        } else {
+                            details.style.display = 'none';
+                        }
+                    });
+                });
+            });
+        </script>
+    <?php endif; ?>
 </head>
 
 <body>
     <h1><?php echo htmlspecialchars($site_name); ?> - MD Gateway</h1>
-    <div id="site-url">
+    <div>
+        <p>このページは <a href="https://github.com/sakilabo/mdgw-wp-php" target="_blank" rel="noopener noreferrer">MD Gateway for WordPress</a> によって生成されています。</p>
+        <ul>
+            <li>WordPress のコンテンツ一覧を AI 向けに整形表示しています。</li>
+            <li>各投稿のリンクから Markdown 形式でコンテンツを参照できます。</li>
+            <li>コンテンツの取得には WP REST API (WordPress の標準機能) を利用しています。</li>
+            <li>MD Gateway の設定により、コンテンツの一部はフィルタリングされている場合があります。</li>
+        </ul>
+    </div>
+    <div id="original-site-url">
         View original:
         <a href="<?= htmlspecialchars(normalize_url($config['wp_site'])) ?>" target="_blank" rel="noopener noreferrer">
             <?= htmlspecialchars(prettify_url($config['wp_site'])) ?>
         </a>
     </div>
-    <?php foreach ($types as $type) : ?>
-        <h2>[<?= $type['slug'] ?>] <?= htmlspecialchars($type['name']) ?></h2>
-        <ul>
-            <?php foreach ($type['contents'] as $content) : ?>
-                <li>
-                    <?php $href = rawurlencode($content['rest_base']) . '/' . $content['id']; ?>
-                    <?php if ($html) { $href .= '?html'; } ?>
-                    <?php if ($content['date_label'] !== ''): ?>
-                        <a href="<?= $href ?>"><?= htmlspecialchars($content['title']) ?> <small>(<?= htmlspecialchars($content['date_label']) ?>)</small></a>
-                    <?php else: ?>
-                        <a href="<?= $href ?>"><?= htmlspecialchars($content['title']) ?></a>
-                    <?php endif; ?>
-                    <button class="details" onclick="toggleDetails(this)">
-                        details
-                    </button>
-                    <ul class="details">
-                        <li>Post ID: <?= $content['id'] ?></li>
-                        <li>Date: <?= $content['date'] ?></li>
-                        <li>Permalink: <?= htmlspecialchars(prettify_url($content['link'])) ?></li>
-                    </ul>
-                </li>
-            <?php endforeach; ?>
-        </ul>
-    <?php endforeach; ?>
+    <main>
+        <?php foreach ($types as $type) : ?>
+            <h2>[<?= $type['slug'] ?>] <?= htmlspecialchars($type['name']) ?></h2>
+            <ul>
+                <?php foreach ($type['contents'] as $content) : ?>
+                    <li>
+                        <?php $href = rawurlencode($content['rest_base']) . '/' . $content['id']; ?>
+                        <?php if ($html) {
+                            $href .= '?html';
+                        } ?>
+                        <?php if (!$is_agent && $content['date_label'] !== ''): ?>
+                            <a href="<?= $href ?>"><?= htmlspecialchars($content['title']) ?> <small>(<?= htmlspecialchars($content['date_label']) ?>)</small></a>
+                        <?php else: ?>
+                            <a href="<?= $href ?>"><?= htmlspecialchars($content['title']) ?></a>
+                        <?php endif; ?>
+                        <?php if (!$is_agent): ?>
+                            <button class="details">
+                                details
+                            </button>
+                        <?php endif; ?>
+                        <ul class="details">
+                            <li>Post ID: <?= $content['id'] ?></li>
+                            <li>Date: <?= $content['date'] ?></li>
+                            <?php if ($is_agent): ?>
+                                <li>Markdown: <?= htmlspecialchars(get_absolute_url(rawurlencode($content['rest_base']) . '/' . $content['id'] . ($html ? '?html' : ''))) ?></li>
+                                <li>Permalink: <?= htmlspecialchars($content['link']) ?></li>
+                            <?php else: ?>
+                                <li>Permalink: <a href="<?= htmlspecialchars($content['link']) ?>"><?= htmlspecialchars(prettify_url($content['link'])) ?></a></li>
+                            <?php endif; ?>
+                        </ul>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        <?php endforeach; ?>
+    </main>
 </body>
 
 </html>
