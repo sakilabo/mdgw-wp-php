@@ -63,7 +63,7 @@ foreach ($types as $slug => $type) {
 }
 foreach (SiteRequest::get($first_urls) as $slug => $res) {
     if (!$res->success) {
-        $detail = $res->error !== '' ? ' (' . $res->error . ')' : '';
+        $detail = ' (slug: ' . $slug . ($res->error !== '' ? ', ' . $res->error : '') . ')';
         throw new HttpException(t('page_fetch_failed') . $detail, HTTP_BAD_GATEWAY);
     }
     $raw_contents[$slug] = json_decode($res->body, true) ?? [];
@@ -78,12 +78,12 @@ foreach (SiteRequest::get($first_urls) as $slug => $res) {
 
 // Phase 2: fetch every remaining page at once (SiteRequest limits the concurrency)
 foreach (SiteRequest::get($queue) as $key => $res) {
+    $slug = explode('|', $key, 2)[0];
     if (!$res->success) {
-        $detail = $res->error !== '' ? ' (' . $res->error . ')' : '';
+        $detail = ' (slug: ' . $slug . ($res->error !== '' ? ', ' . $res->error : '') . ')';
         throw new HttpException(t('page_fetch_failed') . $detail, HTTP_BAD_GATEWAY);
     }
     $response = json_decode($res->body, true) ?? [];
-    $slug = explode('|', $key, 2)[0];
     $raw_contents[$slug] = array_merge($raw_contents[$slug], $response);
 }
 
