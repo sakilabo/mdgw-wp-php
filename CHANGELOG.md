@@ -5,6 +5,12 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2026-06-01
+
+### Changed
+
+- Index fetch errors now name the post type slug that failed.
+
 ## [1.2.0] - 2026-06-01
 
 ### Added
@@ -31,6 +37,7 @@ First public release.
 - Per-post Markdown output converted from the post HTML.
 - Configuration via `config.php` (see `config.sample.php`).
 
+[1.2.1]: https://github.com/sakilabo/mdgw-wp-php/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/sakilabo/mdgw-wp-php/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/sakilabo/mdgw-wp-php/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/sakilabo/mdgw-wp-php/releases/tag/v1.0.0
