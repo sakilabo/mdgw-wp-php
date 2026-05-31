@@ -160,10 +160,12 @@ function is_regex(string $value): bool
 }
 
 // Build the WP REST API collection endpoint URL for a given post type (rest_base) and page.
+// _embed=wp:term embeds each post's taxonomy terms; _fields must keep the dotted _embedded.wp:term.
 function build_collection_endpoint_url(string $wp_site, string $rest_base, int $page): string
 {
     return $wp_site . '/wp-json/wp/v2/' . $rest_base
-        . '?per_page=100&page=' . $page . '&_fields=id,title,link,date,date_gmt';
+        . '?per_page=100&page=' . $page . '&_embed=wp:term'
+        . '&_fields=id,title,link,date,date_gmt,_links.wp:term,_embedded.wp:term';
 }
 
 // Extract the embedded terms of a post grouped by taxonomy: ['category' => ['News'], 'case_tag' => ['PLC', ...]].

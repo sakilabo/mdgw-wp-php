@@ -114,6 +114,8 @@ foreach ($types as $slug => $type) {
     foreach ($contents as &$content) {
         $title = trim(preg_replace('/\s+/u', ' ', $content['title']['rendered'] ?? ''));
         $content['title'] = $title;
+        // Flatten the embedded terms across every taxonomy into a single list of names
+        $content['terms'] = array_merge([], ...array_values(extract_terms_by_taxonomy($content)));
         $content['date'] = format_datetime($content['date_gmt'] ?? '', $config['timezone'] ?? null);
         $content['date_label'] = match ($config['show_date'] ?? 'none') {
             'full'      => $content['date'],                  // full datetime with offset
@@ -244,14 +246,30 @@ header('Vary: User-Agent');
                 <?php foreach ($type['contents'] as $content) : ?>
                     <li>
                         <?php $href = rawurlencode($content['rest_base']) . '/' . $content['id']; ?>
-                        <?php if ($html) {
+                        <?php
+                        if ($html) {
                             $href .= '?html';
-                        } ?>
-                        <?php if (!$is_agent && $content['date_label'] !== ''): ?>
-                            <a href="<?= $href ?>"><?= htmlspecialchars($content['title']) ?> <small>(<?= htmlspecialchars($content['date_label']) ?>)</small></a>
-                        <?php else: ?>
-                            <a href="<?= $href ?>"><?= htmlspecialchars($content['title']) ?></a>
-                        <?php endif; ?>
+                        }
+                        $post_title = htmlspecialchars($content['title']);
+                        $show_terms = (count($content['terms']) > 0);
+                        $show_date = (!$is_agent && $content['date_label'] !== '');
+                        if ($show_terms || $show_date) {
+                            $post_title .= ' <small>';
+                            if ($show_terms) {
+                                foreach ($content['terms'] as $term) {
+                                    $post_title .= '[' . htmlspecialchars(trim($term)) . ']';
+                                }
+                            }
+                            if ($show_date) {
+                                if ($show_terms) {
+                                    $post_title .= ' ';
+                                }
+                                $post_title .= '(' . htmlspecialchars($content['date_label']) . ')';
+                            }
+                            $post_title .= '</small>';
+                        }
+                        ?>
+                        <a href="<?= $href ?>"><?= $post_title ?></a>
                         <?php if (!$is_agent): ?>
                             <button class="details">
                                 details
