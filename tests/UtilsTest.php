@@ -186,6 +186,15 @@ final class UtilsTest extends TestCase
         $this->assertSame('"42"', format_yaml_value('42'));
     }
 
+    public function testFormatYamlValueLeavesIntUnquoted(): void
+    {
+        // An int is emitted as a bare YAML number, even though the same digits as a string are quoted.
+        $this->assertSame('123', format_yaml_value(123));
+        $this->assertSame('"123"', format_yaml_value('123'));
+        $this->assertSame('0', format_yaml_value(0));
+        $this->assertSame('-7', format_yaml_value(-7));
+    }
+
     public function testFormatYamlValueEscapesInsideQuotes(): void
     {
         // A lone backslash is literal in a plain scalar, so it stays unquoted.

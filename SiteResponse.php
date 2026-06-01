@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 // Result of a SiteRequest::get() request: the HTTP outcome plus the response body and headers.
 final class SiteResponse

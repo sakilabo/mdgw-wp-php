@@ -1,6 +1,8 @@
 <?php
 // Internationalization: detect the client language and translate message keys.
 
+declare(strict_types=1);
+
 // Supported UI languages; the first entry is the default used when nothing else matches.
 const SUPPORTED_LANGS = ['en', 'ja'];
 

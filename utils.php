@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 // HTTP status codes
 const HTTP_SEE_OTHER             = 303;
 const HTTP_BAD_REQUEST           = 400;
@@ -218,10 +220,13 @@ function build_css_font_family(mixed $fonts): string
 
 // Format a value for a YAML front-matter line: a flow sequence for an array, otherwise a
 // scalar double-quoted (and escaped) only when YAML would misread it as something else.
-function format_yaml_value(string|array $value): string
+function format_yaml_value(string|int|array $value): string
 {
     if (is_array($value)) {
         return $value === [] ? '[]' : '[ ' . implode(', ', array_map('format_yaml_value', $value)) . ' ]';
+    }
+    if (is_int($value)) {
+        return strval($value);
     }
     $needs_quote =
         $value === ''

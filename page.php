@@ -24,7 +24,7 @@ if (isset($_GET['raw'])) {
     $mode = 'html';
 }
 // If user agent is "Google" then set mode to "html" to make Gemini reading the content correctly
-if (trim($_SERVER['HTTP_USER_AGENT']) === 'Google') {
+if (trim($_SERVER['HTTP_USER_AGENT'] ?? '') === 'Google') {
     $mode = 'html';
 }
 
@@ -53,7 +53,7 @@ if (!empty($url)) {
             // Confirm href is of the form /wp-json/wp/v2/{rest_base}/{id} and extract the values
             if (preg_match('/\/wp-json\/wp\/v2\/([^\/]+)\/(\d+)/', $href, $m)) {
                 $rest_base = $m[1];
-                $page_id = $m[2];
+                $page_id = intval($m[2]);
                 break;
             }
         }
@@ -61,7 +61,7 @@ if (!empty($url)) {
 }
 
 // If rest_base or page_id is empty, redirect to the top page (the same directory as this script)
-if (empty($rest_base) || empty($page_id) || $page_id <= 0) {
+if (empty($rest_base) || $page_id <= 0) {
     header('Location: ./', true, HTTP_SEE_OTHER);
     exit;
 }
@@ -121,27 +121,37 @@ if ($mode == 'markdown') {
 // Only whitespace-only lines are targeted, so the next line's leading indentation is not consumed.
 $content = preg_replace('/(?:[ \t]*\n){2,}/', "\n\n", $content);
 
+// The response body differs by User-Agent, so any cache must key on it.
+header('Vary: User-Agent');
+// Disallow indexing and following links from this page
+header('X-Robots-Tag: noindex, nofollow', true);
+// Output the content according to the selected mode
 switch ($mode) {
     case 'raw':
-        header('Content-Type: text/plain; charset=UTF-8');
+        header('Content-Type: text/plain; charset=UTF-8', true);
         echo $content;
         break;
     case 'html':
-        header('Content-Type: text/html; charset=UTF-8');
-        echo '<html><head><meta charset="UTF-8"><title>' . htmlspecialchars($title) . '</title></head><body>';
+        header('Content-Type: text/html; charset=UTF-8', true);
+        echo '<html><head>';
+        echo '<meta charset="UTF-8"><meta name="robots" content="noindex, nofollow">';
+        echo '<title>' . htmlspecialchars($title) . '</title>';
+        echo '</head><body>';
         echo '<h1>' . htmlspecialchars($title) . '</h1>';
         // Slim the HTML: keep structural (colspan/rowspan) and content-bearing (href/src/alt) attributes,
         // drop <script>/<style> wholesale. (No tags to unwrap for now.)
-        echo slim_html_fragment($content, ['colspan', 'rowspan', 'href', 'src', 'alt'], ['script', 'style']);
+        $key_attrs = ['colspan', 'rowspan', 'href', 'src', 'alt'];
+        $drop_tags = ['script', 'style'];
+        echo slim_html_fragment($content, $key_attrs, $drop_tags);
         echo '</body></html>';
         break;
     case 'markdown':
     default:
-        header('Content-Type: text/plain; charset=UTF-8');
+        header('Content-Type: text/plain; charset=UTF-8', true);
         // Output the YAML Front Matter for Markdown output
         $date = format_datetime($post['date_gmt'] ?? '', $config['timezone'] ?? null);
         echo "---\n";
-        echo 'post_id: ' . format_yaml_value($post['id']) . "\n";
+        echo 'post_id: ' . format_yaml_value(intval($post['id'])) . "\n";
         echo 'date: ' . format_yaml_value($date) . "\n";
         echo 'title: ' . format_yaml_value($title) . "\n";
         foreach (extract_terms_by_taxonomy($post) as $tax => $names) {

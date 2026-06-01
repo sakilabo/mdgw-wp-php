@@ -59,7 +59,11 @@ $queue = [];        // request key "slug|page" => url, for the remaining pages (
 // Phase 1: fetch the first page of every post type in parallel
 $first_urls = [];
 foreach ($types as $slug => $type) {
-    $first_urls[$slug] = build_collection_endpoint_url($config['wp_site'], $type['rest_base'], 1);
+    if (isset($type['rest_base'])) {
+        $first_urls[$slug] = build_collection_endpoint_url($config['wp_site'], $type['rest_base'], 1);
+    } else {
+        unset($types[$slug]);
+    }
 }
 foreach (SiteRequest::get($first_urls) as $slug => $res) {
     if (!$res->success) {
@@ -124,22 +128,20 @@ foreach ($types as $slug => $type) {
     });
     // Sort contents by date_gmt in descending order
     usort($contents, function ($a, $b) {
-        return strtotime($b['date_gmt']) - strtotime($a['date_gmt']);
+        return strtotime($b['date_gmt'] ?? '') - strtotime($a['date_gmt'] ?? '');
     });
-    // Collapse the title to one line and format the date
+    // Prepare each content for rendering
     foreach ($contents as &$content) {
         // Flatten the embedded terms across every taxonomy into a single list of names
         $content['terms'] = array_merge([], ...array_values(extract_terms_by_taxonomy($content)));
+        // Format the date according to the timezone and show_date settings
         $content['date'] = format_datetime($content['date_gmt'] ?? '', $config['timezone'] ?? null);
         $content['date_label'] = match ($config['show_date'] ?? 'none') {
             'full'      => $content['date'],                  // full datetime with offset
             'date-only' => explode(' ', $content['date'])[0], // date part only
             default     => '',                                // 'none' (or anything else)
         };
-    }
-    unset($content);
-    // Add rest_base
-    foreach ($contents as &$content) {
+        $content['link'] = $content['link'] ?? '';
         $content['rest_base'] = $type['rest_base'];
     }
     unset($content);
@@ -149,6 +151,8 @@ foreach ($types as $slug => $type) {
 
 // The response body differs by User-Agent, so any cache must key on it.
 header('Vary: User-Agent');
+// Disallow indexing and following links from this page
+header('X-Robots-Tag: noindex, nofollow', true);
 ?>
 <!DOCTYPE html>
 <html>
@@ -272,7 +276,7 @@ header('Vary: User-Agent');
                         }
                         $title = htmlspecialchars($content['title']);
                         $show_terms = (count($content['terms']) > 0);
-                        $show_date = (!$is_agent && $content['date_label'] !== '');
+                        $show_date = (!$is_agent && $content['date_label']);
                         if ($show_terms || $show_date) {
                             $title .= ' <small>';
                             if ($show_terms) {
@@ -289,7 +293,7 @@ header('Vary: User-Agent');
                             $title .= '</small>';
                         }
                         ?>
-                        <?php if ($content['parent']): ?>
+                        <?php if ($content['parent'] ?? false): ?>
                             <span class="parent"><?= htmlspecialchars($content['parent']) ?> ››</span>
                         <?php endif; ?>
                         <a href="<?= $href ?>"><?= $title ?></a>
