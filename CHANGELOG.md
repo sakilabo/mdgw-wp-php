@@ -5,6 +5,23 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-06-01
+
+### Added
+
+- `posts_per_page` and `max_pages_per_type` cap how many posts the index fetches per type (default: the newest 200), so large sites stay manageable; the listing notes when it is truncated.
+- `wp_addr` sets the address to connect to (e.g. `127.0.0.1` for a WordPress on the same server); leave it empty to resolve over DNS.
+- The index now lists each author once, with their name and bio.
+
+### Changed
+
+- The gateway no longer sends a Referer to sites linked from its pages.
+
+### Removed
+
+- `loopback`, replaced by `wp_addr`; existing `loopback` settings no longer take effect.
+- The author's bio (`author_description`) from a post's Markdown front matter; it now appears in the index instead. The post still lists the author's name.
+
 ## [1.3.0] - 2026-06-01
 
 ### Added
@@ -43,6 +60,7 @@ First public release.
 - Per-post Markdown output converted from the post HTML.
 - Configuration via `config.php` (see `config.sample.php`).
 
+[1.4.0]: https://github.com/sakilabo/mdgw-wp-php/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/sakilabo/mdgw-wp-php/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/sakilabo/mdgw-wp-php/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/sakilabo/mdgw-wp-php/compare/v1.1.0...v1.2.0
