@@ -92,6 +92,7 @@ foreach (SiteRequest::get($queue) as $key => $res) {
 }
 
 // Phase 3: post-process each post type once all requests have completed
+$author_latest = []; // author id => the most recent post's date_gmt, across every post type
 foreach ($types as $slug => $type) {
     $contents = $raw_contents[$slug] ?? [];
     $titles_by_id = [];
@@ -143,10 +144,48 @@ foreach ($types as $slug => $type) {
         };
         $content['link'] = $content['link'] ?? '';
         $content['rest_base'] = $type['rest_base'];
+        // Keep the author ID (resolved to a name below); track each author's most recent post
+        $content['author_id'] = (int) ($content['author'] ?? 0);
+        if ($content['author_id'] > 0) {
+            $date_gmt = $content['date_gmt'] ?? '';
+            if (!isset($author_latest[$content['author_id']]) || $date_gmt > $author_latest[$content['author_id']]) {
+                $author_latest[$content['author_id']] = $date_gmt;
+            }
+        }
     }
     unset($content);
     // Add content information to the post type
     $types[$slug]['contents'] = $contents;
+}
+
+// Resolve the unique authors to names/descriptions via the users endpoint, newest poster first.
+$authors = [];
+if ($author_latest !== []) {
+    // Order author IDs by their most recent post across all post types (descending)
+    uasort($author_latest, fn($a, $b) => strtotime($b) <=> strtotime($a));
+    $ids = array_keys($author_latest);
+    // include= takes a comma-separated ID list; chunk it to the endpoint's 100-per-request cap
+    // and fetch the chunks in parallel (SiteRequest paces the concurrency itself).
+    $users_urls = [];
+    foreach (array_chunk($ids, 100) as $chunk) {
+        $users_urls[] = $config['wp_site'] . '/wp-json/wp/v2/users?include='
+            . implode(',', $chunk) . '&per_page=100&_fields=id,name,description';
+    }
+    $users_by_id = [];
+    foreach (SiteRequest::get($users_urls) as $res) {
+        if ($res->success) {
+            foreach (json_decode($res->body, true) ?? [] as $user) {
+                $users_by_id[$user['id']] = $user;
+            }
+        }
+    }
+    // Keep the latest-post order; skip authors the users endpoint did not return
+    foreach ($ids as $id) {
+        $name = trim($users_by_id[$id]['name'] ?? '');
+        if ($name !== '') {
+            $authors[$id] = ['name' => $name, 'description' => $users_by_id[$id]['description'] ?? ''];
+        }
+    }
 }
 
 // The response body differs by User-Agent, so any cache must key on it.
@@ -190,6 +229,11 @@ header('X-Robots-Tag: noindex, nofollow', true);
             h2 {
                 font-size: 24px;
                 margin: 18px 0 10px;
+            }
+
+            h3.author {
+                font-size: 20px;
+                margin: 10px 0 6px;
             }
 
             p {
@@ -264,6 +308,19 @@ header('X-Robots-Tag: noindex, nofollow', true);
         </a>
     </div>
     <main>
+        <?php if (count($authors) > 0): ?>
+            <div id="authors">
+                <h2>Authors</h2>
+                <?php foreach ($authors as $author): ?>
+                    <h3 class="author"><?= htmlspecialchars($author['name']) ?></h3>
+                    <?php if ($author['description'] !== ''): ?>
+                        <div class="author-description">
+                            <?= nl2br(htmlspecialchars($author['description'])) ?>
+                        </div>
+                    <?php endif; ?>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
         <?php foreach ($types as $type) : ?>
             <h2>[<?= $type['slug'] ?>] <?= htmlspecialchars($type['name']) ?></h2>
             <ul>
@@ -305,6 +362,10 @@ header('X-Robots-Tag: noindex, nofollow', true);
                         <ul class="details">
                             <li>Post ID: <?= $content['id'] ?></li>
                             <li>Date: <?= $content['date'] ?></li>
+                            <?php $author = $authors[$content['author_id']] ?? null; ?>
+                            <?php if (is_array($author)): ?>
+                                <li>Author: <?= htmlspecialchars($author['name']) ?></li>
+                            <?php endif; ?>
                             <?php if ($is_agent): ?>
                                 <li>Markdown: <?= htmlspecialchars(get_absolute_url(rawurlencode($content['rest_base']) . '/' . $content['id'] . ($html ? '?html' : ''))) ?></li>
                                 <li>Permalink: <?= htmlspecialchars($content['link']) ?></li>

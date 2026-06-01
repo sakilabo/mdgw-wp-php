@@ -111,10 +111,8 @@ if ($mode == 'markdown') {
         return '](' . prettify_url($m[1]) . ')';
     }, $markdown);
     $content = '# ' . $title . "\n\n" . $markdown;
-    // Get the author's name and description from the embedded author data, if available
+    // Get the author's name from the embedded author data, if available
     $post['author_name'] = $post['_embedded']['author'][0]['name'] ?? '';
-    $author_description = $post['_embedded']['author'][0]['description'] ?? '';
-    $post['author_description'] = trim(preg_replace('/\s+/u', ' ', $author_description));
 }
 
 // Collapse consecutive blank lines (including whitespace-only lines) into a single blank line.
@@ -157,11 +155,8 @@ switch ($mode) {
         foreach (extract_terms_by_taxonomy($post) as $tax => $names) {
             echo $tax . ': ' . format_yaml_value($names) . "\n";
         }
-        if ($post['author_name'] != '') {
+        if ($post['author_name'] !== '') {
             echo 'author: ' . format_yaml_value($post['author_name']) . "\n";
-            if ($post['author_description'] != '') {
-                echo 'author_description: ' . format_yaml_value($post['author_description']) . "\n";
-            }
         }
         echo 'permalink: ' . format_yaml_value($post['link'] ?? '') . "\n";
         // Output the REST API endpoint only when enabled in config (default off)

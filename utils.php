@@ -166,7 +166,7 @@ function build_collection_endpoint_url(string $wp_site, string $rest_base, int $
 {
     return $wp_site . '/wp-json/wp/v2/' . $rest_base
         . '?per_page=100&page=' . $page . '&_embed=wp:term'
-        . '&_fields=id,title,link,date,date_gmt,parent,_links.wp:term,_embedded.wp:term';
+        . '&_fields=id,title,link,date,date_gmt,parent,author,_links.wp:term,_embedded.wp:term';
 }
 
 // Extract the embedded terms of a post grouped by taxonomy: ['category' => ['News'], 'case_tag' => ['PLC', ...]].
