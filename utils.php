@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 // HTTP status codes
@@ -40,7 +41,7 @@ set_exception_handler(function (\Throwable $e): void {
 
 // Return the configuration (associative array).
 // Loads config.php on the first call and caches it for subsequent calls.
-function load_config(): array
+function load_config(array &$overrides = []): array
 {
     static $config = null;
     if ($config !== null) {
@@ -55,6 +56,20 @@ function load_config(): array
     // Abort if it is not an array
     if (!is_array($config)) {
         throw new HttpException(t('config_invalid'));
+    }
+    // Override settings
+    $allow_override = get_current_scheme() === 'https'; // HTTPS required.
+    $allow_override &= (strlen($config['secret'] ?? '') >= 10); // secret must be at least 10 chars.
+    $allow_override &= hash_equals($config['secret'] ?? '', $overrides['secret'] ?? '');
+    if ($allow_override) {
+        $config = array_merge($config, $overrides);
+        // If wp_site is overridden, clear wp_addr
+        if ($overrides['wp_site'] ?? '') {
+            unset($config['wp_addr']);
+            unset($overrides['wp_addr']);
+        }
+    } else if ($overrides) {
+        $overrides = []; // clear overrides if not allowed, to avoid confusion in the caller
     }
     // Abort if a required setting is missing
     foreach (['wp_site'] as $key) {
@@ -137,15 +152,21 @@ function normalize_url(string $url, bool $without_params = false): ?string
     }
 }
 
-// Build an absolute URL on this gateway from a relative URL, using the current request.
+// Determine the scheme (http or https) of the current request.
 // Handles a TLS-terminating proxy in front (e.g. nginx -> Apache).
-function get_absolute_url(string $relative_url): string
+function get_current_scheme(): string
 {
-    $scheme = (
+    return (
         ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https'
         || (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
         || ($_SERVER['SERVER_PORT'] ?? '') === '443'
     ) ? 'https' : 'http';
+}
+
+// Build an absolute URL on this gateway from a relative URL, using the current request.
+function get_absolute_url(string $relative_url): string
+{
+    $scheme = get_current_scheme();
     $base_url = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? '')
         . rtrim(strtok($_SERVER['REQUEST_URI'] ?? '/', '?'), '/') . '/';
     return $base_url . ltrim($relative_url, '/');
@@ -161,11 +182,13 @@ function is_regex(string $value): bool
         && @preg_match($value, '') !== false;
 }
 
-// Build the WP REST API collection endpoint URL for a given post type (rest_base) and page.
-function build_collection_endpoint_url(string $wp_site, string $rest_base, int $page): string
+// Build the WP REST API collection endpoint URL for a given post type (rest_base), page, and per-page count.
+// Sorted newest-first (orderby=date desc) explicitly, so the per-type cap keeps the newest items.
+function build_collection_endpoint_url(string $wp_site, string $rest_base, int $page, int $per_page): string
 {
+    $per_page = max(1, min(100, $per_page)); // clamp per_page to 1-100 (WordPress caps it at 100)
     return $wp_site . '/wp-json/wp/v2/' . $rest_base
-        . '?per_page=100&page=' . $page . '&_embed=wp:term'
+        . '?per_page=' . $per_page . '&page=' . $page . '&orderby=date&order=desc&_embed=wp:term'
         . '&_fields=id,title,link,date,date_gmt,parent,author,_links.wp:term,_embedded.wp:term';
 }
 

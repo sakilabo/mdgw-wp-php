@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 require_once __DIR__ . '/../vendor/autoload.php';
@@ -28,11 +29,21 @@ class BlockConverter implements ConverterInterface
     public function getSupportedTags(): array
     {
         return [
-            'figure', 'figcaption',
-            'details', 'summary',
-            'section', 'article', 'aside', 'header', 'footer', 'main', 'nav',
+            'figure',
+            'figcaption',
+            'details',
+            'summary',
+            'section',
+            'article',
+            'aside',
+            'header',
+            'footer',
+            'main',
+            'nav',
             'address',
-            'dl', 'dt', 'dd',
+            'dl',
+            'dt',
+            'dd',
         ];
     }
 }

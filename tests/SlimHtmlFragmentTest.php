@@ -38,9 +38,24 @@ final class SlimHtmlFragmentTest extends TestCase
 
     public function testKeepsHrefSrcAltAndDropsTheRest(): void
     {
+        // An href-bearing element also gains rel="noreferrer" (the <img> has no href, so it does not).
         $this->assertSame(
-            '<a href="u">L</a><img src="s" alt="A">',
+            '<a href="u" rel="noreferrer">L</a><img src="s" alt="A">',
             $this->slim('<a href="u" target="_blank">L</a><img src="s" alt="A" width="9">')
+        );
+    }
+
+    public function testNoreferrerIsAppendedToAKeptRelWithoutDuplicating(): void
+    {
+        // When rel survives the keep-filter, noreferrer is appended rather than clobbering it...
+        $this->assertSame(
+            '<a href="u" rel="nofollow noreferrer">L</a>',
+            slim_html_fragment('<a href="u" rel="nofollow">L</a>', ['href', 'rel'])
+        );
+        // ...and an existing noreferrer token is not duplicated.
+        $this->assertSame(
+            '<a href="u" rel="noreferrer">L</a>',
+            slim_html_fragment('<a href="u" rel="noreferrer">L</a>', ['href', 'rel'])
         );
     }
 

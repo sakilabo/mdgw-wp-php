@@ -53,7 +53,9 @@ Place it under a public directory (e.g. `https://example.com/mdgate/`).
 | Key | Description |
 | --- | --- |
 | `wp_site` | URL of the target WordPress site (e.g. `https://example.com`). IDN may be given in Unicode or punycode. |
-| `loopback` | `true` to reach a WordPress instance on the same server over loopback (127.0.0.1) and skip SSL verification. Use `false` for a different server. |
+| `wp_addr` | Address to connect to. When set, the host is pinned to this address instead of being resolved over DNS, and SSL verification is skipped (the address need not match the certificate). E.g. `127.0.0.1` for a WordPress instance on the same server. Leave empty for normal DNS resolution. |
+| `posts_per_page` | Posts fetched per page, per post type (1-100). Defaults to 100. |
+| `max_pages_per_type` | Max pages fetched per post type. Defaults to 2. |
 | `timeout` | Connection timeout for the REST API, in seconds. Defaults to 15. |
 | `concurrency` | Maximum number of REST API requests fetched in parallel. Defaults to 4 (clamped to 1–8). |
 | `timezone` | Timezone for displaying dates. Accepts an IANA name, abbreviation, or offset (e.g. `Asia/Tokyo`, `JST`, `+0900`). Defaults to the server's timezone. |

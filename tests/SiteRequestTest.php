@@ -17,7 +17,7 @@ final class FakeSiteRequest extends SiteRequest
     public const BASE = 'https://example.com';
 
     /** @var array Config returned by config(). Reset in setUp for each test, overridden as needed */
-    public static array $config = ['wp_site' => self::BASE, 'loopback' => false];
+    public static array $config = ['wp_site' => self::BASE];
 
     /** @var array<int|string,string> The URLs most recently received by execute() */
     public static array $received = [];
@@ -53,7 +53,7 @@ final class SiteRequestTest extends TestCase
     protected function setUp(): void
     {
         // Start each test from the default condition (wp_site = BASE)
-        FakeSiteRequest::$config = ['wp_site' => FakeSiteRequest::BASE, 'loopback' => false];
+        FakeSiteRequest::$config = ['wp_site' => FakeSiteRequest::BASE];
         FakeSiteRequest::$received = [];
     }
 
@@ -105,7 +105,7 @@ final class SiteRequestTest extends TestCase
     public function testPathPrefixedSiteScopesInternalUrls(): void
     {
         // When wp_site has a path, only URLs under that path are treated as internal
-        FakeSiteRequest::$config = ['wp_site' => 'https://example.com/blog', 'loopback' => false];
+        FakeSiteRequest::$config = ['wp_site' => 'https://example.com/blog'];
 
         $res = FakeSiteRequest::get('https://example.com/blog/post');
         $this->assertTrue($res->success);

@@ -123,6 +123,8 @@ $content = preg_replace('/(?:[ \t]*\n){2,}/', "\n\n", $content);
 header('Vary: User-Agent');
 // Disallow indexing and following links from this page
 header('X-Robots-Tag: noindex, nofollow', true);
+// Disallow sending the Referer header to other sites when a link is clicked from this page
+header('Referrer-Policy: no-referrer', true);
 // Output the content according to the selected mode
 switch ($mode) {
     case 'raw':

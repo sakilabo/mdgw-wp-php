@@ -41,6 +41,16 @@ function slim_html_fragment(string $html, array $keep_attrs, array $drop_tags = 
                 $el->removeAttribute($name);
             }
         }
+        if ($el->hasAttribute('href')) {
+            // Ensure rel carries noreferrer, appended to any rel that survived the keep-filter
+            // (without clobbering it, and without duplicating an existing noreferrer token).
+            $rel = trim($el->getAttribute('rel'));
+            $tokens = $rel === '' ? [] : preg_split('/\s+/', $rel);
+            if (!in_array('noreferrer', $tokens, true)) {
+                $tokens[] = 'noreferrer';
+            }
+            $el->setAttribute('rel', implode(' ', $tokens));
+        }
     }
 
     // Unwrap: replace each tag with its children. Snapshot first; nested unwrap tags stay valid as their

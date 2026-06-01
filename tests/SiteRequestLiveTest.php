@@ -9,9 +9,9 @@ require_once __DIR__ . '/../SiteRequest.php';
 
 /**
  * SiteRequest subclass that overrides ONLY config() and keeps the real execute(),
- * so the request actually goes out over the network. config() returns no 'loopback'
- * key on purpose, so the non-loopback path (`$config['loopback'] ?? false` => false)
- * is exercised: real DNS resolution and real SSL verification, no CURLOPT_RESOLVE.
+ * so the request actually goes out over the network. config() returns no 'wp_addr'
+ * key on purpose, so the address-pinning path is skipped and the host is resolved
+ * via real DNS, with real SSL verification.
  */
 final class LiveSiteRequest extends SiteRequest
 {
@@ -19,7 +19,7 @@ final class LiveSiteRequest extends SiteRequest
 
     protected static function config(): array
     {
-        // Deliberately no 'loopback' key (defaults to off) and no 'timeout' (defaults to 15s).
+        // Deliberately no 'wp_addr' key (resolve over DNS) and no 'timeout' (defaults to 15s).
         return ['wp_site' => self::BASE];
     }
 }
@@ -31,7 +31,7 @@ final class LiveSiteRequest extends SiteRequest
 #[Group('network')]
 final class SiteRequestLiveTest extends TestCase
 {
-    public function testExecuteFetchesOverRealNetworkWithoutLoopback(): void
+    public function testExecuteFetchesOverRealNetworkWithoutAddrPin(): void
     {
         $res = LiveSiteRequest::get(LiveSiteRequest::BASE);
 

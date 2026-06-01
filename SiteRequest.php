@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 require_once __DIR__ . '/utils.php';
@@ -131,8 +132,12 @@ class SiteRequest
         $parts = parse_url($url);
         // CURLOPT_RESOLVE requires a port
         $port = $parts['port'] ?? ($parts['scheme'] === 'https' ? 443 : 80);
-        if ($config['loopback'] ?? false) {
-            $opts[CURLOPT_RESOLVE] = [$parts['host'] . ':' . $port . ':127.0.0.1'];
+        $wp_addr = $config['wp_addr'] ?? '';
+        if ($wp_addr !== '') {
+            // Pin the host to the configured address instead of resolving it over DNS
+            // (e.g. 127.0.0.1 for a same-server WordPress). The address need not match the
+            // certificate, so skip SSL verification (documented limitation).
+            $opts[CURLOPT_RESOLVE] = [$parts['host'] . ':' . $port . ':' . $wp_addr];
             if ($parts['scheme'] === 'https') {
                 $opts[CURLOPT_SSL_VERIFYPEER] = false;
                 $opts[CURLOPT_SSL_VERIFYHOST] = 0;
@@ -140,17 +145,19 @@ class SiteRequest
         } else {
             // Resolve in PHP and pin the IP via CURLOPT_RESOLVE so curl skips its own resolver:
             // some hosts (e.g. Xserver php-fcgi) can't start curl's resolver thread
-            // ("getaddrinfo() thread failed to start"). If PHP can't resolve either, let curl try.
+            // ("getaddrinfo() thread failed to start").
             $ips = self::resolveHost($parts['host']);
-            if ($ips !== []) {
-                $opts[CURLOPT_RESOLVE] = [$parts['host'] . ':' . $port . ':' . implode(',', $ips)];
+            // Resolution failed: abort rather than letting curl fall back to its own (possibly failing) resolver.
+            if ($ips === []) {
+                throw new HttpException(t('host_resolve_failed', $parts['host']), HTTP_BAD_GATEWAY);
             }
+            $opts[CURLOPT_RESOLVE] = [$parts['host'] . ':' . $port . ':' . implode(',', $ips)];
         }
         curl_setopt_array($ch, $opts);
         return $ch;
     }
 
-    // Resolve a host to its IPv4/IPv6 addresses using PHP's resolver (not curl's). Returns [] on failure.
+    // Resolve a host to its IPv4/IPv6 addresses. Returns [] if it cannot be resolved.
     // protected so a test subclass can exercise it.
     protected static function resolveHost(string $host): array
     {

@@ -8,8 +8,15 @@ return [
     // Target WordPress site URL
     'wp_site' => 'https://example.com',
 
-    // true: WordPress is on the same server (access 127.0.0.1, skip SSL verification)
-    'loopback' => false,
+    // Address to connect to. When set, the host is pinned to this address instead of being resolved
+    // over DNS, and SSL verification is skipped (the address need not match the certificate).
+    // E.g. '127.0.0.1' for an instance on the same server. Leave empty to resolve the host over DNS.
+    'wp_addr' => '',
+
+    // Listing fetch limit per post type, to keep large sites manageable: up to max_pages_per_type pages
+    // of posts_per_page items each (newest first). When a type has more, the listing notes it is truncated.
+    'posts_per_page'     => 100, // items per page (1-100; WordPress caps per_page at 100)
+    'max_pages_per_type' => 2,   // pages fetched per type
 
     // REST API connection timeout, in seconds (default 15)
     'timeout' => 15,

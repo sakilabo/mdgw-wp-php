@@ -55,12 +55,16 @@ $types = array_filter($types, function ($type) use ($config) {
 // number of in-flight requests itself, so we hand it all the URLs at once and let it pace them.
 $raw_contents = []; // slug => accumulated raw post arrays
 $queue = [];        // request key "slug|page" => url, for the remaining pages (any order)
+// Cap the listing per post type, so a large site stays manageable: fetch up to $max_pages_per_type
+// pages of $posts_per_page items each.
+$posts_per_page = intval($config['posts_per_page'] ?? 100);
+$max_pages_per_type = intval($config['max_pages_per_type'] ?? 2);
 
 // Phase 1: fetch the first page of every post type in parallel
 $first_urls = [];
 foreach ($types as $slug => $type) {
     if (isset($type['rest_base'])) {
-        $first_urls[$slug] = build_collection_endpoint_url($config['wp_site'], $type['rest_base'], 1);
+        $first_urls[$slug] = build_collection_endpoint_url($config['wp_site'], $type['rest_base'], 1, $posts_per_page);
     } else {
         unset($types[$slug]);
     }
@@ -71,12 +75,15 @@ foreach (SiteRequest::get($first_urls) as $slug => $res) {
         throw new HttpException(t('page_fetch_failed') . $detail, HTTP_BAD_GATEWAY);
     }
     $raw_contents[$slug] = json_decode($res->body, true) ?? [];
-    // Inspect the page count and queue up the remaining pages
-    $total_pages = isset($res->headers['x-wp-totalpages'])
-        ? intval($res->headers['x-wp-totalpages'])
-        : 1;
-    for ($page = 2; $page <= $total_pages; $page++) {
-        $queue[$slug . '|' . $page] = build_collection_endpoint_url($config['wp_site'], $types[$slug]['rest_base'], $page);
+    // Record per-type fetch metadata on the type itself: the site's actual item count, and the page count.
+    $types[$slug]['total_found'] = intval($res->headers['x-wp-total'] ?? 0);
+    $types[$slug]['total_pages'] = intval($res->headers['x-wp-totalpages'] ?? 1);
+    // Truncated when the site has more pages for this type than the per-type cap.
+    $types[$slug]['truncated'] = $types[$slug]['total_pages'] > $max_pages_per_type;
+    // Queue the remaining pages, up to the cap, so we don't pull a large site's entire archive.
+    $end_page = min($types[$slug]['total_pages'], $max_pages_per_type);
+    for ($page = 2; $page <= $end_page; $page++) {
+        $queue[$slug . '|' . $page] = build_collection_endpoint_url($config['wp_site'], $types[$slug]['rest_base'], $page, $posts_per_page);
     }
 }
 
@@ -192,6 +199,8 @@ if ($author_latest !== []) {
 header('Vary: User-Agent');
 // Disallow indexing and following links from this page
 header('X-Robots-Tag: noindex, nofollow', true);
+// Disallow sending the Referer header to other sites when a link is clicked from this page
+header('Referrer-Policy: no-referrer', true);
 ?>
 <!DOCTYPE html>
 <html>
@@ -323,11 +332,14 @@ header('X-Robots-Tag: noindex, nofollow', true);
         <?php endif; ?>
         <?php foreach ($types as $type) : ?>
             <h2>[<?= $type['slug'] ?>] <?= htmlspecialchars($type['name']) ?></h2>
+            <?php if ($type['truncated']): ?>
+                <p><?= htmlspecialchars(t('showing_latest', $type['total_found'], count($type['contents']))) ?></p>
+            <?php endif; ?>
             <ul>
                 <?php foreach ($type['contents'] as $content) : ?>
                     <li>
-                        <?php $href = rawurlencode($content['rest_base']) . '/' . $content['id']; ?>
                         <?php
+                        $href = rawurlencode($content['rest_base']) . '/' . $content['id'];
                         if ($html) {
                             $href .= '?html';
                         }
@@ -370,7 +382,7 @@ header('X-Robots-Tag: noindex, nofollow', true);
                                 <li>Markdown: <?= htmlspecialchars(get_absolute_url(rawurlencode($content['rest_base']) . '/' . $content['id'] . ($html ? '?html' : ''))) ?></li>
                                 <li>Permalink: <?= htmlspecialchars($content['link']) ?></li>
                             <?php else: ?>
-                                <li>Permalink: <a href="<?= htmlspecialchars($content['link']) ?>"><?= htmlspecialchars(prettify_url($content['link'])) ?></a></li>
+                                <li>Permalink: <a href="<?= htmlspecialchars($content['link']) ?>" rel="noreferrer"><?= htmlspecialchars(prettify_url($content['link'])) ?></a></li>
                             <?php endif; ?>
                         </ul>
                     </li>

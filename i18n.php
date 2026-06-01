@@ -87,6 +87,14 @@ function t(string $key, mixed ...$args): string
             'en' => 'The url must point to a page on this site.',
             'ja' => 'url にはサイト内の URL を指定してください。',
         ],
+        'host_resolve_failed' => [
+            'en' => 'Could not resolve the host "%s".',
+            'ja' => 'ホスト "%s" の名前解決に失敗しました。',
+        ],
+        'showing_latest' => [
+            'en' => 'Showing the latest %2$d of %1$d items.',
+            'ja' => '全 %1$d 件中、最新 %2$d 件を表示しています。',
+        ],
     ];
     $lang     = client_lang();
     $template = $messages[$key][$lang] ?? $messages[$key]['en'] ?? $key;

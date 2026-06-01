@@ -51,7 +51,9 @@ cp config.sample.php config.php   # config.php を環境に合わせて編集
 | キー | 説明 |
 | --- | --- |
 | `wp_site` | 対象 WordPress のサイト URL（例: `https://example.com`）。IDN は Unicode でも punycode でも可。 |
-| `loopback` | `true` で同一サーバーの WordPress へループバック（127.0.0.1）アクセスし SSL 検証を省略。別サーバーなら `false`。 |
+| `wp_addr` | 接続先アドレス。指定するとホスト名を DNS で引かずこのアドレスへ接続し、SSL 検証を省略します（アドレスは証明書と一致しなくてよい）。同一サーバーの WordPress なら `127.0.0.1` など。空なら通常の DNS 解決。 |
+| `posts_per_page` | 投稿タイプごとの1ページあたり取得件数（1〜100）。省略時 100。 |
+| `max_pages_per_type` | 投稿タイプごとに取得する最大ページ数。省略時 2。 |
 | `timeout` | REST API への接続タイムアウト（秒）。省略時 15。 |
 | `concurrency` | 並列取得する REST API リクエストの最大数。省略時 4（1〜8 にクランプ）。 |
 | `timezone` | 日時表示に使うタイムゾーン。IANA 名・略称・オフセット可（例: `Asia/Tokyo` / `JST` / `+0900`）。省略時はサーバーのタイムゾーン。 |
