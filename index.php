@@ -90,11 +90,27 @@ foreach (SiteRequest::get($queue) as $key => $res) {
 // Phase 3: post-process each post type once all requests have completed
 foreach ($types as $slug => $type) {
     $contents = $raw_contents[$slug] ?? [];
+    $titles_by_id = [];
+    // Prepare title and build a map of ID to title
+    foreach ($contents as &$content) {
+        // Flatten the title to one line
+        $title = trim(preg_replace('/\s+/u', ' ', $content['title']['rendered'] ?? ''));
+        $content['title'] = $title;
+        $titles_by_id[$content['id']] = $content['title'];
+    }
+    unset($content);
+    // Set the parent title
+    foreach ($contents as &$content) {
+        if (($content['parent'] ?? 0) > 0) {
+            $content['parent'] = $titles_by_id[$content['parent']] ?? '';
+        }
+    }
+    unset($content);
     // Exclude posts whose title matches a regex / is an exact match, or whose ID matches one configured in config.php
     $contents = array_filter($contents, function ($content) use ($config) {
-        $title = $content['title']['rendered'] ?? '';
         foreach ($config['exclude_titles'] ?? [] as $rule) {
-            $matched = is_regex($rule) ? preg_match($rule, $title) : ($title === $rule);
+            $rule = trim($rule);
+            $matched = is_regex($rule) ? preg_match($rule, $content['title']) : ($content['title'] === $rule);
             if ($matched) {
                 return false;
             }
@@ -112,8 +128,6 @@ foreach ($types as $slug => $type) {
     });
     // Collapse the title to one line and format the date
     foreach ($contents as &$content) {
-        $title = trim(preg_replace('/\s+/u', ' ', $content['title']['rendered'] ?? ''));
-        $content['title'] = $title;
         // Flatten the embedded terms across every taxonomy into a single list of names
         $content['terms'] = array_merge([], ...array_values(extract_terms_by_taxonomy($content)));
         $content['date'] = format_datetime($content['date_gmt'] ?? '', $config['timezone'] ?? null);
@@ -176,6 +190,12 @@ header('Vary: User-Agent');
 
             p {
                 margin: 0.3em 0;
+            }
+
+            span.parent {
+                font-size: 12px;
+                vertical-align: 1px;
+                color: #808080;
             }
 
             ul {
@@ -250,26 +270,29 @@ header('Vary: User-Agent');
                         if ($html) {
                             $href .= '?html';
                         }
-                        $post_title = htmlspecialchars($content['title']);
+                        $title = htmlspecialchars($content['title']);
                         $show_terms = (count($content['terms']) > 0);
                         $show_date = (!$is_agent && $content['date_label'] !== '');
                         if ($show_terms || $show_date) {
-                            $post_title .= ' <small>';
+                            $title .= ' <small>';
                             if ($show_terms) {
                                 foreach ($content['terms'] as $term) {
-                                    $post_title .= '[' . htmlspecialchars(trim($term)) . ']';
+                                    $title .= '[' . htmlspecialchars(trim($term)) . ']';
                                 }
                             }
                             if ($show_date) {
                                 if ($show_terms) {
-                                    $post_title .= ' ';
+                                    $title .= ' ';
                                 }
-                                $post_title .= '(' . htmlspecialchars($content['date_label']) . ')';
+                                $title .= '(' . htmlspecialchars($content['date_label']) . ')';
                             }
-                            $post_title .= '</small>';
+                            $title .= '</small>';
                         }
                         ?>
-                        <a href="<?= $href ?>"><?= $post_title ?></a>
+                        <?php if ($content['parent']): ?>
+                            <span class="parent"><?= htmlspecialchars($content['parent']) ?> ››</span>
+                        <?php endif; ?>
+                        <a href="<?= $href ?>"><?= $title ?></a>
                         <?php if (!$is_agent): ?>
                             <button class="details">
                                 details
