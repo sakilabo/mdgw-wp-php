@@ -5,6 +5,12 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-06-02
+
+### Changed
+
+- A post type whose listing can't be fetched (e.g. 401 without permission, 404 with no collection route) no longer aborts the index; it is listed at the end of the page under "Post types that could not be read".
+
 ## [1.4.0] - 2026-06-01
 
 ### Added
@@ -60,6 +66,7 @@ First public release.
 - Per-post Markdown output converted from the post HTML.
 - Configuration via `config.php` (see `config.sample.php`).
 
+[1.5.0]: https://github.com/sakilabo/mdgw-wp-php/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/sakilabo/mdgw-wp-php/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/sakilabo/mdgw-wp-php/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/sakilabo/mdgw-wp-php/compare/v1.2.0...v1.2.1
