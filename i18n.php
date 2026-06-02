@@ -95,6 +95,10 @@ function t(string $key, mixed ...$args): string
             'en' => 'Showing the latest %2$d of %1$d items.',
             'ja' => '全 %1$d 件中、最新 %2$d 件を表示しています。',
         ],
+        'unreadable_types' => [
+            'en' => 'Post types that could not be read',
+            'ja' => '読み出せなかった投稿タイプ',
+        ],
     ];
     $lang     = client_lang();
     $template = $messages[$key][$lang] ?? $messages[$key]['en'] ?? $key;

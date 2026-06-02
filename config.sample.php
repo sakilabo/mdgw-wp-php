@@ -32,10 +32,21 @@ return [
     // 'font_family' => ['Helvetica', 'Arial', 'sans-serif'],
 
     // Items to hide from the listing. Each rule is a delimited regex (e.g. '/^wp_/') or an exact string.
-    'exclude_type_slugs' => ['/^wp_/', '/^nav_/', 'attachment'], // post type slugs
-    'exclude_type_names' => [],                                  // post type names
-    'exclude_titles'     => [],                                  // post titles
-    'exclude_ids'        => [],                                  // post IDs (exact integers, e.g. [12, 34])
+    // post type slugs
+    'exclude_type_slugs' => [
+        '/^wp_/',     // built-in post types for WordPress internals
+        '/^nav_/',    // built-in navigation menus items
+        'attachment', // built-in media items
+        '/jetpack/',  // Jetpack
+        '/^jp_/',     // Jetpack
+        'feedback',   // Jetpack
+    ],
+    // post type names
+    'exclude_type_names' => [],
+    // post titles
+    'exclude_titles'     => [],
+    // post IDs (exact integers, e.g. [12, 34])
+    'exclude_ids'        => [],
 
     // Date shown after each title in the listing: 'full', 'date-only', or 'none' (default)
     'show_date' => 'none',

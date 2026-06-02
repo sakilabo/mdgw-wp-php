@@ -69,8 +69,15 @@ foreach ($types as $slug => $type) {
         unset($types[$slug]);
     }
 }
+$unreadable_types = []; // slug => name, for post types whose listing can't be fetched (401/404)
 foreach (SiteRequest::get($first_urls) as $slug => $res) {
     if (!$res->success) {
+        // No permission (401) or no collection route (404): note it for the footer instead of failing.
+        if ($res->status === 401 || $res->status === 404) {
+            $unreadable_types[$slug] = $types[$slug]['name'] ?? $slug;
+            unset($types[$slug]);
+            continue;
+        }
         $detail = ' (slug: ' . $slug . ($res->error !== '' ? ', ' . $res->error : '') . ')';
         throw new HttpException(t('page_fetch_failed') . $detail, HTTP_BAD_GATEWAY);
     }
@@ -389,6 +396,16 @@ header('Referrer-Policy: no-referrer', true);
                 <?php endforeach; ?>
             </ul>
         <?php endforeach; ?>
+        <?php if (count($unreadable_types) > 0): ?>
+            <div id="unreadable-types">
+                <h2><?= htmlspecialchars(t('unreadable_types')) ?></h2>
+                <ul>
+                    <?php foreach ($unreadable_types as $slug => $name): ?>
+                        <li>[<?= $slug ?>] <?= htmlspecialchars($name) ?></li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+        <?php endif; ?>
     </main>
 </body>
 
